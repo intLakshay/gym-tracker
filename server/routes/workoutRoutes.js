@@ -20,3 +20,4 @@ router.route('/:id')
   .delete(protect, deleteWorkout);
 
 module.exports = router;
+

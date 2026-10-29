@@ -118,3 +118,4 @@ module.exports = {
   deleteExercise,
   DEFAULT_EXERCISES
 };
+

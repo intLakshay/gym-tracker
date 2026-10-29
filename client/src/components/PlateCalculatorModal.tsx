@@ -197,3 +197,4 @@ export const PlateCalculatorModal: React.FC<PlateCalculatorModalProps> = ({
     </div>
   );
 };
+

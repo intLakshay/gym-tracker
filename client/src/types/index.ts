@@ -107,3 +107,4 @@ export interface ExerciseProgressionPoint {
   volume: number;
   setsCount: number;
 }
+

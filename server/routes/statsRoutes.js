@@ -10,3 +10,4 @@ router.get('/dashboard', protect, getDashboardStats);
 router.get('/exercise/:exerciseName', protect, getExerciseProgression);
 
 module.exports = router;
+

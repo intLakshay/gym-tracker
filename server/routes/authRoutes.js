@@ -14,3 +14,4 @@ router.get('/me', protect, getMe);
 router.put('/preferences', protect, updatePreferences);
 
 module.exports = router;
+

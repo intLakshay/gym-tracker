@@ -15,3 +15,4 @@ router.route('/:id')
   .delete(protect, deleteExercise);
 
 module.exports = router;
+
