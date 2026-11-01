@@ -32,7 +32,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       }
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Authentication failed. Please check credentials or try demo mode.');
+      if (isLogin && err.message?.toLowerCase().includes('invalid email or password')) {
+        setError('Invalid credentials. If this is a new account, please click "Register" above to create it first!');
+      } else {
+        setError(err.message || 'Authentication failed. Please check credentials or try demo mode.');
+      }
     } finally {
       setLoading(false);
     }
@@ -102,7 +106,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="px-6 pb-6 space-y-3.5">
           {error && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-medium">
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-medium leading-relaxed">
               {error}
             </div>
           )}
@@ -225,4 +229,3 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     </div>
   );
 };
-

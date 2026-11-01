@@ -87,7 +87,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
     return await res.json();
   } catch (err: any) {
-    // If backend is unreachable or user is in demo mode, delegate to local storage fallback
+    if (err.message && err.message.toLowerCase().includes('failed to fetch')) {
+      throw new Error(
+        'Cannot reach backend server. If using Render free tier, the server may take ~50s to wake up from sleep. If running locally, make sure server is running on port 5000.'
+      );
+    }
     throw err;
   }
 }
