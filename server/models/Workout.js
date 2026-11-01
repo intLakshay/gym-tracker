@@ -39,7 +39,6 @@ const setSchema = new mongoose.Schema({
 const workoutExerciseSchema = new mongoose.Schema({
   exercise: {
     type: mongoose.Schema.Types.Mixed,
-    ref: 'Exercise',
     required: false,
   },
   exerciseName: {
@@ -78,7 +77,7 @@ const workoutSchema = new mongoose.Schema(
       default: 0,
     },
     totalVolume: {
-      type: Number, // total kg / lbs lifted (weight * reps)
+      type: Number, // total weight * reps
       default: 0,
     },
     notes: {
@@ -88,7 +87,7 @@ const workoutSchema = new mongoose.Schema(
     exercises: [workoutExerciseSchema],
     prsAchieved: [{
       exerciseName: String,
-      type: String, // 'Weight' or '1RM' or 'Volume'
+      type: String, // 'Max Weight' or 'Estimated 1RM'
       value: Number,
     }],
   },
@@ -97,26 +96,24 @@ const workoutSchema = new mongoose.Schema(
   }
 );
 
-// Calculate total volume and 1RM before saving
-workoutSchema.pre('save', function (next) {
+// Calculate total volume and 1RM before saving (Mongoose 9 synchronous pre hook)
+workoutSchema.pre('save', function () {
   let volume = 0;
   if (this.exercises && this.exercises.length > 0) {
     this.exercises.forEach((ex) => {
       if (ex.sets && ex.sets.length > 0) {
         ex.sets.forEach((s) => {
           if (s.completed && s.type !== 'warmup') {
-            volume += (s.weight || 0) * (s.reps || 0);
+            volume += (Number(s.weight) || 0) * (Number(s.reps) || 0);
           }
-          // Epley formula: w * (1 + r / 30)
           if (s.reps > 0 && s.weight > 0) {
-            s.estimated1RM = Math.round(s.weight * (1 + s.reps / 30) * 10) / 10;
+            s.estimated1RM = Math.round(Number(s.weight) * (1 + Number(s.reps) / 30) * 10) / 10;
           }
         });
       }
     });
   }
   this.totalVolume = Math.round(volume);
-  next();
 });
 
 module.exports = mongoose.model('Workout', workoutSchema);

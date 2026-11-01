@@ -256,19 +256,28 @@ export const api = {
 
   workouts: {
     getAll: async (): Promise<Workout[]> => {
+      const local = getLocalWorkouts();
       if (isDemoMode()) {
-        return getLocalWorkouts();
+        return local;
       }
       try {
         const remote = await request<Workout[]>('/workouts');
         if (Array.isArray(remote)) {
-          saveLocalWorkouts(remote);
-          return remote;
+          if (remote.length > 0) {
+            saveLocalWorkouts(remote);
+            return remote;
+          }
+          // If remote returned 0 workouts, check if we have recent client-logged workouts
+          const userLocal = local.filter(
+            (w) =>
+              !['w-1', 'w-2', 'w-3', 'w-4'].includes(w._id)
+          );
+          return userLocal.length > 0 ? userLocal : remote;
         }
-        return getLocalWorkouts();
+        return local;
       } catch (err) {
         console.warn('Backend fetch failed, using local cache:', err);
-        return getLocalWorkouts();
+        return local;
       }
     },
 
@@ -285,6 +294,24 @@ export const api = {
           }
         });
       });
+
+      // Sanitize exercises to ensure no invalid IDs crash Mongoose
+      const cleanExercises = workoutData.exercises.map((ex) => {
+        const isValidId = ex.exercise && /^[0-9a-fA-F]{24}$/.test(String(ex.exercise));
+        return {
+          ...ex,
+          exercise: isValidId ? ex.exercise : undefined,
+          sets: (ex.sets || []).map((s) => ({
+            ...s,
+            completed: s.completed !== false,
+          })),
+        };
+      });
+
+      const payload = {
+        ...workoutData,
+        exercises: cleanExercises,
+      };
 
       // Demo mode handling
       if (isDemoMode()) {
@@ -331,10 +358,10 @@ export const api = {
       try {
         const saved = await request<Workout>('/workouts', {
           method: 'POST',
-          body: JSON.stringify(workoutData),
+          body: JSON.stringify(payload),
         });
         const currentLocal = getLocalWorkouts();
-        saveLocalWorkouts([saved, ...currentLocal.filter(w => w._id !== saved._id)]);
+        saveLocalWorkouts([saved, ...currentLocal.filter((w) => w._id !== saved._id)]);
         return saved;
       } catch (err: any) {
         console.warn('Backend save failed, saving to local cache:', err);
