@@ -103,21 +103,21 @@ export const ActiveWorkoutPage: React.FC<ActiveWorkoutPageProps> = ({
           type: 'normal',
           weight: unit === 'kg' ? 50 : 115,
           reps: 10,
-          completed: false,
+          completed: true,
         },
         {
           setNumber: 2,
           type: 'normal',
           weight: unit === 'kg' ? 50 : 115,
           reps: 10,
-          completed: false,
+          completed: true,
         },
         {
           setNumber: 3,
           type: 'normal',
           weight: unit === 'kg' ? 50 : 115,
           reps: 8,
-          completed: false,
+          completed: true,
         },
       ],
     }));
@@ -234,11 +234,19 @@ export const ActiveWorkoutPage: React.FC<ActiveWorkoutPageProps> = ({
 
     setIsSaving(true);
     try {
+      const finalizedExercises = exercises.map((ex) => ({
+        ...ex,
+        sets: ex.sets.map((s) => ({
+          ...s,
+          completed: true,
+        })),
+      }));
+
       await api.workouts.create({
         title: title.trim() || routine.title,
         date: new Date().toISOString(),
         duration,
-        exercises,
+        exercises: finalizedExercises,
       });
 
       // Advance routine day to the next training day!

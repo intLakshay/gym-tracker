@@ -14,20 +14,31 @@ const getDashboardStats = async (req, res) => {
     const muscleFrequency = {};
     const recentWorkoutsChart = [];
 
-    // Calculate this week's start (Monday or 7 days ago)
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     let volumeThisWeek = 0;
 
     workouts.forEach((w) => {
-      totalVolume += w.totalVolume || 0;
-      totalDuration += w.duration || 0;
+      // Calculate volume safely even if totalVolume was saved as 0
+      let wVolume = Number(w.totalVolume) || 0;
+      if (wVolume === 0 && w.exercises && w.exercises.length > 0) {
+        w.exercises.forEach((ex) => {
+          ex.sets?.forEach((s) => {
+            if (s.type !== 'warmup') {
+              wVolume += (Number(s.weight) || 0) * (Number(s.reps) || 0);
+            }
+          });
+        });
+      }
+
+      totalVolume += wVolume;
+      totalDuration += Number(w.duration) || 0;
       if (w.prsAchieved && w.prsAchieved.length > 0) {
         totalPRs += w.prsAchieved.length;
       }
 
       if (new Date(w.date) >= oneWeekAgo) {
-        volumeThisWeek += w.totalVolume || 0;
+        volumeThisWeek += wVolume;
       }
 
       // Tally muscle groups
@@ -42,21 +53,31 @@ const getDashboardStats = async (req, res) => {
     // Take the last 8 workouts for volume trend chart
     const last8Workouts = workouts.slice(-8);
     last8Workouts.forEach((w) => {
+      let wVolume = Number(w.totalVolume) || 0;
+      if (wVolume === 0 && w.exercises) {
+        w.exercises.forEach((ex) => {
+          ex.sets?.forEach((s) => {
+            if (s.type !== 'warmup') {
+              wVolume += (Number(s.weight) || 0) * (Number(s.reps) || 0);
+            }
+          });
+        });
+      }
+
       recentWorkoutsChart.push({
         date: new Date(w.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         title: w.title,
-        volume: w.totalVolume,
-        durationMin: Math.round((w.duration || 0) / 60),
+        volume: wVolume,
+        durationMin: Math.round((Number(w.duration) || 0) / 60),
       });
     });
 
-    // Format muscle breakdown for charts
     const muscleDistribution = Object.keys(muscleFrequency).map((name) => ({
       name,
       value: muscleFrequency[name],
     }));
 
-    // Calculate streak (days with workouts)
+    // Calculate streak
     let currentStreak = 0;
     if (workouts.length > 0) {
       const dates = [
@@ -122,13 +143,18 @@ const getExerciseProgression = async (req, res) => {
         let maxWeight = 0;
         let max1RM = 0;
         let exerciseVolume = 0;
+        let completedCount = 0;
 
         match.sets.forEach((s) => {
-          if (s.completed && s.type !== 'warmup') {
-            if (s.weight > maxWeight) maxWeight = s.weight;
-            const e1rm = s.estimated1RM || Math.round(s.weight * (1 + (s.reps || 0) / 30) * 10) / 10;
+          const isDone = s.completed !== false || (Number(s.weight) > 0 && Number(s.reps) > 0);
+          if (isDone && s.type !== 'warmup') {
+            const sw = Number(s.weight) || 0;
+            const sr = Number(s.reps) || 0;
+            if (sw > maxWeight) maxWeight = sw;
+            const e1rm = s.estimated1RM || (sr > 0 ? Math.round(sw * (1 + sr / 30) * 10) / 10 : sw);
             if (e1rm > max1RM) max1RM = e1rm;
-            exerciseVolume += (s.weight || 0) * (s.reps || 0);
+            exerciseVolume += sw * sr;
+            completedCount++;
           }
         });
 
@@ -140,7 +166,7 @@ const getExerciseProgression = async (req, res) => {
             maxWeight,
             estimated1RM: max1RM,
             volume: exerciseVolume,
-            setsCount: match.sets.filter((s) => s.completed).length,
+            setsCount: completedCount || match.sets.length,
           });
         }
       }
@@ -156,4 +182,3 @@ module.exports = {
   getDashboardStats,
   getExerciseProgression,
 };
-

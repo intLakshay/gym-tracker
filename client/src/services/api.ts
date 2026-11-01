@@ -500,13 +500,18 @@ export const api = {
           let maxWeight = 0;
           let max1RM = 0;
           let exerciseVolume = 0;
+          let doneSetsCount = 0;
 
           match.sets.forEach((s) => {
-            if (s.completed && s.type !== 'warmup') {
-              if (s.weight > maxWeight) maxWeight = s.weight;
-              const e1rm = s.estimated1RM || Math.round(s.weight * (1 + s.reps / 30) * 10) / 10;
+            const isDone = s.completed !== false || (Number(s.weight) > 0 && Number(s.reps) > 0);
+            if (isDone && s.type !== 'warmup') {
+              const sw = Number(s.weight) || 0;
+              const sr = Number(s.reps) || 0;
+              if (sw > maxWeight) maxWeight = sw;
+              const e1rm = s.estimated1RM || (sr > 0 ? Math.round(sw * (1 + sr / 30) * 10) / 10 : sw);
               if (e1rm > max1RM) max1RM = e1rm;
-              exerciseVolume += (s.weight || 0) * (s.reps || 0);
+              exerciseVolume += sw * sr;
+              doneSetsCount++;
             }
           });
 
@@ -518,7 +523,7 @@ export const api = {
               maxWeight,
               estimated1RM: max1RM,
               volume: exerciseVolume,
-              setsCount: match.sets.filter((s) => s.completed).length,
+              setsCount: doneSetsCount || match.sets.length,
             });
           }
         }

@@ -162,7 +162,22 @@ export const HistoryPage: React.FC = () => {
                       <div className="flex items-center gap-1 text-emerald-400 font-bold">
                         <Dumbbell className="w-3.5 h-3.5" />
                         <span>
-                          {workout.totalVolume?.toLocaleString()} {unit}
+                          {(
+                            workout.totalVolume && workout.totalVolume > 0
+                              ? workout.totalVolume
+                              : (workout.exercises || []).reduce(
+                                  (acc, ex) =>
+                                    acc +
+                                    (ex.sets || []).reduce(
+                                      (sAcc, s) =>
+                                        sAcc +
+                                        (Number(s.weight) || 0) * (Number(s.reps) || 0),
+                                      0
+                                    ),
+                                  0
+                                )
+                          ).toLocaleString()}{' '}
+                          {unit}
                         </span>
                       </div>
                     </div>
