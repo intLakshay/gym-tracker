@@ -260,8 +260,14 @@ export const api = {
         return getLocalWorkouts();
       }
       try {
-        return await request<Workout[]>('/workouts');
-      } catch {
+        const remote = await request<Workout[]>('/workouts');
+        if (Array.isArray(remote)) {
+          saveLocalWorkouts(remote);
+          return remote;
+        }
+        return getLocalWorkouts();
+      } catch (err) {
+        console.warn('Backend fetch failed, using local cache:', err);
         return getLocalWorkouts();
       }
     },
@@ -272,18 +278,17 @@ export const api = {
       workoutData.exercises.forEach((ex) => {
         ex.sets.forEach((s) => {
           if (s.completed && s.type !== 'warmup') {
-            volume += (s.weight || 0) * (s.reps || 0);
+            volume += (Number(s.weight) || 0) * (Number(s.reps) || 0);
           }
           if (s.reps > 0 && s.weight > 0) {
-            s.estimated1RM = Math.round(s.weight * (1 + s.reps / 30) * 10) / 10;
+            s.estimated1RM = Math.round(Number(s.weight) * (1 + Number(s.reps) / 30) * 10) / 10;
           }
         });
       });
 
+      // Demo mode handling
       if (isDemoMode()) {
         const workouts = getLocalWorkouts();
-        
-        // Check PRs
         const prs: { exerciseName: string; type: string; value: number }[] = [];
         workoutData.exercises.forEach((ex) => {
           let currentMaxWeight = 0;
@@ -293,9 +298,9 @@ export const api = {
 
           let pastMax = 0;
           workouts.forEach((w) => {
-            w.exercises.forEach((pastEx) => {
+            w.exercises?.forEach((pastEx) => {
               if (pastEx.exerciseName.toLowerCase() === ex.exerciseName.toLowerCase()) {
-                pastEx.sets.forEach((ps) => {
+                pastEx.sets?.forEach((ps) => {
                   if (ps.completed && ps.weight > pastMax) pastMax = ps.weight;
                 });
               }
@@ -322,20 +327,25 @@ export const api = {
         return newWorkout;
       }
 
+      // Live Backend handling
       try {
-        return await request<Workout>('/workouts', {
+        const saved = await request<Workout>('/workouts', {
           method: 'POST',
           body: JSON.stringify(workoutData),
         });
-      } catch {
-        const workouts = getLocalWorkouts();
-        const newWorkout: Workout = {
+        const currentLocal = getLocalWorkouts();
+        saveLocalWorkouts([saved, ...currentLocal.filter(w => w._id !== saved._id)]);
+        return saved;
+      } catch (err: any) {
+        console.warn('Backend save failed, saving to local cache:', err);
+        const currentLocal = getLocalWorkouts();
+        const fallbackWorkout: Workout = {
           ...workoutData,
           _id: `w-${Date.now()}`,
           totalVolume: volume,
         };
-        saveLocalWorkouts([newWorkout, ...workouts]);
-        return newWorkout;
+        saveLocalWorkouts([fallbackWorkout, ...currentLocal]);
+        return fallbackWorkout;
       }
     },
 

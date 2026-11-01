@@ -9,6 +9,9 @@ import {
   TrendingUp,
   Clock,
   Sparkles,
+  Calendar,
+  Check,
+  Play,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -24,6 +27,11 @@ import {
 import { api } from '../services/api';
 import type { DashboardStats, Workout } from '../types';
 import { useAuth } from '../context/AuthContext';
+import {
+  WEEKLY_SPLIT_ROUTINE,
+  getCurrentRoutineDay,
+  setRoutineDay,
+} from '../services/routinePlan';
 
 interface DashboardPageProps {
   onStartWorkout: () => void;
@@ -49,6 +57,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const { user, unit } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentWorkouts, setRecentWorkouts] = useState<Workout[]>([]);
+  const currentDayNum = getCurrentRoutineDay();
+  const currentRoutine =
+    WEEKLY_SPLIT_ROUTINE.find((r) => r.dayNumber === currentDayNum) ||
+    WEEKLY_SPLIT_ROUTINE[0];
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -75,7 +87,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
-      {/* Welcome Banner & Quick Start */}
+      {/* Welcome Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-800 p-6 sm:p-8">
         <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         
@@ -102,6 +114,78 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <span>Start Workout Now</span>
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* 7-Day Weekly Split Plan Roadmap */}
+      <div className="bg-zinc-900/80 border border-zinc-800 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 font-mono">
+                Your Weekly Training Split
+              </span>
+              <h2 className="text-lg font-black text-white">
+                Next Up: <span className="text-emerald-400">{currentRoutine.title}</span>
+              </h2>
+            </div>
+          </div>
+
+          <button
+            onClick={onStartWorkout}
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-zinc-950 font-bold rounded-xl text-xs sm:text-sm shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+          >
+            <Play className="w-4 h-4 fill-current" />
+            <span>Start Day {currentRoutine.dayNumber} ({currentRoutine.focusMuscles.join(' & ') || 'Session'})</span>
+          </button>
+        </div>
+
+        {/* 7 Days Progress Stepper */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1">
+          {WEEKLY_SPLIT_ROUTINE.map((day) => {
+            const isToday = day.dayNumber === currentDayNum;
+            const isPast = day.dayNumber < currentDayNum;
+
+            return (
+              <div
+                key={day.dayNumber}
+                onClick={() => {
+                  setRoutineDay(day.dayNumber);
+                  onStartWorkout();
+                }}
+                className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+                  isToday
+                    ? 'bg-emerald-500/15 border-emerald-500/50 shadow-lg shadow-emerald-500/10 scale-[1.02]'
+                    : isPast
+                    ? 'bg-zinc-950/60 border-zinc-800/60 opacity-70 hover:opacity-100'
+                    : 'bg-zinc-900/50 border-zinc-800/80 hover:border-zinc-700'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={`text-[10px] font-mono font-bold uppercase ${isToday ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                    Day {day.dayNumber}
+                  </span>
+                  {isToday ? (
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  ) : isPast ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : null}
+                </div>
+
+                <div className="mt-2">
+                  <div className={`font-bold text-xs truncate ${isToday ? 'text-white' : 'text-zinc-300'}`}>
+                    {day.focusMuscles[0] || 'Rest'}
+                  </div>
+                  <span className="text-[10px] text-zinc-500 truncate block">
+                    {day.focusMuscles.slice(1).join(', ') || (day.dayNumber === 7 ? 'Recovery' : 'Focus')}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -186,7 +270,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Workout Volume Trend Chart (2 columns on large screens) */}
+        {/* Workout Volume Trend Chart */}
         <div className="lg:col-span-2 bg-zinc-900/70 border border-zinc-800/80 rounded-3xl p-5 sm:p-6 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -327,7 +411,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               onClick={onStartWorkout}
               className="mt-3 px-4 py-2 bg-emerald-500 text-zinc-950 rounded-xl text-xs font-bold hover:bg-emerald-400"
             >
-              Start Your First Workout
+              Start Day {currentDayNum} Workout
             </button>
           </div>
         ) : (

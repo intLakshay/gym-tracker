@@ -38,7 +38,7 @@ const setSchema = new mongoose.Schema({
 
 const workoutExerciseSchema = new mongoose.Schema({
   exercise: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.Mixed,
     ref: 'Exercise',
     required: false,
   },

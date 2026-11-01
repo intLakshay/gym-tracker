@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Workout = require('../models/Workout');
 
 // @desc    Get all workouts for logged-in user
@@ -6,8 +7,7 @@ const Workout = require('../models/Workout');
 const getWorkouts = async (req, res) => {
   try {
     const workouts = await Workout.find({ user: req.user._id })
-      .sort({ date: -1 })
-      .populate('exercises.exercise', 'name category targetMuscle');
+      .sort({ date: -1 });
 
     res.json(workouts);
   } catch (error) {
@@ -51,13 +51,13 @@ const createWorkout = async (req, res) => {
     
     // Build a map of max weight and max 1RM achieved historically per exercise
     const historicalMaxMap = {};
-    pastWorkouts.forEach(w => {
-      w.exercises.forEach(ex => {
+    pastWorkouts.forEach((w) => {
+      w.exercises?.forEach((ex) => {
         const name = ex.exerciseName.toLowerCase();
         if (!historicalMaxMap[name]) {
           historicalMaxMap[name] = { maxWeight: 0, max1RM: 0 };
         }
-        ex.sets.forEach(s => {
+        ex.sets?.forEach((s) => {
           if (s.completed) {
             if (s.weight > historicalMaxMap[name].maxWeight) {
               historicalMaxMap[name].maxWeight = s.weight;
@@ -72,21 +72,35 @@ const createWorkout = async (req, res) => {
 
     // Check newly submitted sets against historical max
     const prsAchieved = [];
-    exercises.forEach(ex => {
+    const cleanExercises = exercises.map((ex) => {
       const name = ex.exerciseName.toLowerCase();
       const hist = historicalMaxMap[name] || { maxWeight: 0, max1RM: 0 };
       
       let currentSessionMaxWeight = 0;
       let currentSessionMax1RM = 0;
 
-      ex.sets.forEach(s => {
-        if (s.completed && s.type !== 'warmup') {
-          const epley1RM = Math.round((s.weight * (1 + (s.reps || 0) / 30)) * 10) / 10;
-          s.estimated1RM = epley1RM;
+      const cleanSets = (ex.sets || []).map((s) => {
+        const setWeight = Number(s.weight) || 0;
+        const setReps = Number(s.reps) || 0;
+        const isCompleted = s.completed !== false;
+        const epley1RM = setReps > 0 && setWeight > 0
+          ? Math.round((setWeight * (1 + setReps / 30)) * 10) / 10
+          : 0;
 
-          if (s.weight > currentSessionMaxWeight) currentSessionMaxWeight = s.weight;
+        if (isCompleted && s.type !== 'warmup') {
+          if (setWeight > currentSessionMaxWeight) currentSessionMaxWeight = setWeight;
           if (epley1RM > currentSessionMax1RM) currentSessionMax1RM = epley1RM;
         }
+
+        return {
+          setNumber: s.setNumber,
+          type: s.type || 'normal',
+          weight: setWeight,
+          reps: setReps,
+          rpe: s.rpe || null,
+          completed: isCompleted,
+          estimated1RM: epley1RM,
+        };
       });
 
       // If user had previous logs for this exercise and beat their max weight or 1RM
@@ -103,6 +117,14 @@ const createWorkout = async (req, res) => {
           value: currentSessionMax1RM,
         });
       }
+
+      return {
+        exercise: ex.exercise || null,
+        exerciseName: ex.exerciseName,
+        targetMuscle: ex.targetMuscle || 'Full Body',
+        sets: cleanSets,
+        notes: ex.notes || '',
+      };
     });
 
     const workout = new Workout({
@@ -111,13 +133,14 @@ const createWorkout = async (req, res) => {
       date: date || new Date(),
       duration: duration || 0,
       notes: notes || '',
-      exercises,
+      exercises: cleanExercises,
       prsAchieved,
     });
 
     const savedWorkout = await workout.save();
     res.status(201).json(savedWorkout);
   } catch (error) {
+    console.error('Error creating workout:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -179,4 +202,3 @@ module.exports = {
   deleteWorkout,
   getLastExercisePerformance,
 };
-

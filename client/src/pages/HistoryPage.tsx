@@ -7,6 +7,7 @@ import {
   ChevronUp,
   Award,
   Search,
+  RotateCcw,
 } from 'lucide-react';
 import type { Workout } from '../types';
 import { api } from '../services/api';
@@ -20,10 +21,10 @@ export const HistoryPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadWorkouts = async () => {
+    setLoading(true);
     try {
       const data = await api.workouts.getAll();
       setWorkouts(data);
-      // Auto-expand the most recent workout
       if (data.length > 0 && !expandedId) {
         setExpandedId(data[0]._id);
       }
@@ -74,21 +75,32 @@ export const HistoryPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative min-w-[240px]">
-          <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            placeholder="Search workout or exercise..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500 placeholder-zinc-500"
-          />
+        <div className="flex items-center gap-2">
+          {/* Search Bar */}
+          <div className="relative min-w-[220px]">
+            <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-3" />
+            <input
+              type="text"
+              placeholder="Search workout or exercise..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500 placeholder-zinc-500"
+            />
+          </div>
+
+          {/* Refresh Button */}
+          <button
+            onClick={loadWorkouts}
+            title="Reload workouts"
+            className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-emerald-400 hover:border-zinc-700 transition-colors cursor-pointer"
+          >
+            <RotateCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
       </div>
 
       {/* Workout Logs List */}
-      {loading ? (
+      {loading && workouts.length === 0 ? (
         <div className="p-12 text-center text-xs text-zinc-500">Loading workout history...</div>
       ) : filteredWorkouts.length === 0 ? (
         <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-3xl p-12 text-center space-y-3">
