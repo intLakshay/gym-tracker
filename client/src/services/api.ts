@@ -9,7 +9,9 @@ import type {
 } from '../types';
 import { INITIAL_EXERCISES, INITIAL_WORKOUTS } from './mockData';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const RAW_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').trim();
+const CLEAN_URL = RAW_URL.replace(/\/+$/, '');
+const BASE_URL = CLEAN_URL.endsWith('/api') ? CLEAN_URL : `${CLEAN_URL}/api`;
 
 // Storage Keys
 const TOKEN_KEY = 'gym_tracker_token';

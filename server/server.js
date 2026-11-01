@@ -37,7 +37,7 @@ app.use(
 app.use(express.json());
 
 // Base Route & Health check for Render
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/health'], (req, res) => {
   res.json({
     status: 'ok',
     service: 'Gym Tracker API',
@@ -49,11 +49,23 @@ app.get('/', (req, res) => {
   res.send('Gym Tracker MERN API is running.');
 });
 
-// API Routes
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/exercises', require('./routes/exerciseRoutes'));
-app.use('/api/workouts', require('./routes/workoutRoutes'));
-app.use('/api/stats', require('./routes/statsRoutes'));
+// API Routes (Support both with and without '/api' prefix to prevent 404s if VITE_API_URL omits /api)
+const authRoutes = require('./routes/authRoutes');
+const exerciseRoutes = require('./routes/exerciseRoutes');
+const workoutRoutes = require('./routes/workoutRoutes');
+const statsRoutes = require('./routes/statsRoutes');
+
+app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
+
+app.use('/api/exercises', exerciseRoutes);
+app.use('/exercises', exerciseRoutes);
+
+app.use('/api/workouts', workoutRoutes);
+app.use('/workouts', workoutRoutes);
+
+app.use('/api/stats', statsRoutes);
+app.use('/stats', statsRoutes);
 
 // 404 Route handler
 app.use((req, res, next) => {
@@ -72,4 +84,3 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
-
